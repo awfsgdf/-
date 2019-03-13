@@ -21,52 +21,82 @@ int main(int argc, char *argv[])
 	arg arg_r; //允许隐含环
 	char head; //开始字母
 	char tail; //结束字母
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
+
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始读入参数！----------" << endl;
+	cout << "Waiting···" << endl;
 	for (int i = 0; i < argc; i++) {
 		cout << "第 " << i << " 个参数是 " << argv[i] << endl;
 	}
 	find_arg(argc, argv, arg_w, arg_c, arg_h, arg_t, arg_r, head, tail);
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
+	cout << "----------完成读入参数！----------" << endl;
+
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始读取单词列表！----------" << endl;
+	cout << "Waiting···" << endl;
 	fin.open(argv[argc - 1], ios::in);
 	fout.open("./solution.txt", ios::out);
 	fin.unsetf(ios::skipws);								//取消忽略空白符
 	vector<string> str_wordlist = read_words();
-	bool enable_loop = false;
+	cout << "列表中共有 " << str_wordlist.size() << " 个单词" << endl;
+	cout << "----------完成读取单词列表！----------" << endl;
 
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
-	cout << "开始环路检查" << endl;
-	bool loop_acc = check_loop(str_wordlist, enable_loop);
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始检查环路！----------" << endl;
+	cout << "Waiting···" << endl;
+	bool loop_acc = check_loop(str_wordlist, arg_r.exist);
 	if (loop_acc) {
-		cout << "环路检查正确" << endl;
+		cout << "环路检查通过！" << endl;
 	}
 	else {
-		cout << "环路检查错误" << endl;
+		cout << "环路检查未通过！！！" << endl;
 	}
-	cout << "环路检查结束" << endl;
+	cout << "----------完成检查环路！----------" << endl;
 	
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
-	cout << "开始创建单词集" << endl;
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始创建单词集！----------" << endl;
+	cout << "Waiting···" << endl;
 	for (unsigned int i = 0; i < str_wordlist.size(); i++) {
 		words[i] = (char *)malloc(sizeof(char) * 50);		//每个单词限50字符
 		strcpy_s(words[i],50, str_wordlist[i].c_str());
 		//cout << words[i] << endl;
 	}
-	cout << "完成创建单词集" << endl;
+	cout << "----------完成创建单词集！----------" << endl;
 
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
-	cout << "开始查找" << endl;
-	core->gen_chain_word(words, str_wordlist.size(), result, '0', '0', enable_loop);
-	cout << "完成查找" << endl;
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始查找最长链！----------" << endl;
+	cout << "Waiting···" << endl;
+	if (arg_w.exist) {
+		cout << "最长单词链" << endl;
+		core->gen_chain_word(words, str_wordlist.size(), result, head, tail, arg_r.exist);
+	}
+	if (arg_c.exist) {
+		cout << "最长字母链" << endl;
+		core->gen_chain_char(words, str_wordlist.size(), result, head, tail, arg_r.exist);
+	}
+	cout << "----------完成查找最长链！----------" << endl;
 
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
-	cout << "开始打印结果" << endl;
+	cout << endl;
+	cout << endl;
+	cout << endl;
+	cout << "----------开始打印结果！----------" << endl;
+	cout << "Waiting···" << endl;
 	for (int i = 0; strcmp(result[i],"16061182") != 0; i++) {
 		cout << result[i] << " -> " << endl;
+		fout << result[i] << endl;
 	}
-	cout << "完成打印结果" << endl;
+	cout << "----------完成打印结果！----------" << endl;
 	
-	cout << "----------COYG-COYG-COYG-COYG-COYG-COYG-COYG-COYG----------" << endl;
-	cout << "全て終わり" << endl;
 	/*gen_chain_char(words, str_wordlist.size(), result, '0', '0', false);
 	for (int i = 0; strcmp(result[i], "16061182") != 0; i++) {
 		cout << result[i] << " -> " << endl;

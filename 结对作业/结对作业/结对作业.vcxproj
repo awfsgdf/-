@@ -168,8 +168,15 @@
     <ResourceCompile Include="结对作业.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="article.txt" />
+    <Text Include="hard.txt" />
+    <Text Include="article结果.txt" />
+    <Text Include="hard结果.txt" />
     <Text Include="Text1.txt" />
+    <Text Include="Text1结果.txt" />
     <Text Include="Text2.txt" />
+    <Text Include="Text3.txt" />
+    <Text Include="Text3结果.txt" />
     <Text Include="wordlist.txt" />
     <Text Include="wordlist2.txt" />
   </ItemGroup>

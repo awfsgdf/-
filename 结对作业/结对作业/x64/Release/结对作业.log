@@ -1,0 +1,9 @@
+﻿  pch.cpp
+  结对作业.cpp
+c:\users\administrator\desktop\software-engineering\结对作业\结对作业\interface.h(389): warning C4267: “初始化”: 从“size_t”转换到“int”，可能丢失数据
+c:\users\administrator\desktop\software-engineering\结对作业\结对作业\结对作业.cpp(81): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+c:\users\administrator\desktop\software-engineering\结对作业\结对作业\结对作业.cpp(85): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+  正在生成代码
+  All 601 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  已完成代码的生成
+  结对作业.vcxproj -> C:\Users\Administrator\Desktop\Software-Engineering\结对作业\x64\Release\结对作业.exe
