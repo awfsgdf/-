@@ -1,9 +1,0 @@
-ab
-bx
-bb
-bc
-cd
-ce
-xy
-zx
-yc
