@@ -4,6 +4,7 @@
 
 #include "pch.h"
 #include "interface.h"
+#include "ew.h"
 
 using namespace std;
 
@@ -11,102 +12,134 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-	char* words[10005];
-	char* result[10005];
-	Core* core = new Core();
-	arg arg_w; //最多单词
-	arg arg_c; //最多字母
-	arg arg_h; //指定首字母
-	arg arg_t; //指定尾字母
-	arg arg_r; //允许隐含环
-	char head; //开始字母
-	char tail; //结束字母
-
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始读入参数！----------" << endl;
-	cout << "Waiting···" << endl;
-	for (int i = 0; i < argc; i++) {
-		cout << "第 " << i << " 个参数是 " << argv[i] << endl;
-	}
-	find_arg(argc, argv, arg_w, arg_c, arg_h, arg_t, arg_r, head, tail);
-	cout << "----------完成读入参数！----------" << endl;
-
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始读取单词列表！----------" << endl;
-	cout << "Waiting···" << endl;
-	fin.open(argv[argc - 1], ios::in);
-	fout.open("./solution.txt", ios::out);
-	fin.unsetf(ios::skipws);								//取消忽略空白符
-	vector<string> str_wordlist = read_words();
-	cout << "列表中共有 " << str_wordlist.size() << " 个单词" << endl;
-	cout << "----------完成读取单词列表！----------" << endl;
-
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始检查环路！----------" << endl;
-	cout << "Waiting···" << endl;
-	bool loop_acc = check_loop(str_wordlist, arg_r.exist);
-	if (loop_acc) {
-		cout << "环路检查通过！" << endl;
-	}
-	else {
-		cout << "环路检查未通过！！！" << endl;
-	}
-	cout << "----------完成检查环路！----------" << endl;
-	
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始创建单词集！----------" << endl;
-	cout << "Waiting···" << endl;
-	for (unsigned int i = 0; i < str_wordlist.size(); i++) {
-		words[i] = (char *)malloc(sizeof(char) * 50);		//每个单词限50字符
-		strcpy_s(words[i],50, str_wordlist[i].c_str());
-		//cout << words[i] << endl;
-	}
-	cout << "----------完成创建单词集！----------" << endl;
-
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始查找最长链！----------" << endl;
-	cout << "Waiting···" << endl;
-	if (arg_w.exist) {
-		cout << "最长单词链" << endl;
-		core->gen_chain_word(words, str_wordlist.size(), result, head, tail, arg_r.exist);
-	}
-	if (arg_c.exist) {
-		cout << "最长字母链" << endl;
-		core->gen_chain_char(words, str_wordlist.size(), result, head, tail, arg_r.exist);
-	}
-	cout << "----------完成查找最长链！----------" << endl;
-
-	cout << endl;
-	cout << endl;
-	cout << endl;
-	cout << "----------开始打印结果！----------" << endl;
-	cout << "Waiting···" << endl;
-	for (int i = 0; strcmp(result[i],"16061182") != 0; i++) {
-		cout << result[i] << " -> " << endl;
-		fout << result[i] << endl;
-	}
-	cout << "----------完成打印结果！----------" << endl;
-	
-	/*gen_chain_char(words, str_wordlist.size(), result, '0', '0', false);
-	for (int i = 0; strcmp(result[i], "16061182") != 0; i++) {
-		cout << result[i] << " -> " << endl;
-	}
-	cout << "结束" << endl;*/
-	fin.close();
-	fout.close();
+	int method = 0;
 
 
-     
+	if (method == 0) {
+		char* words[10005];
+		char* result[10005];
+		Core* core = new Core();
+		arg arg_w; //最多单词
+		arg arg_c; //最多字母
+		arg arg_h; //指定首字母
+		arg arg_t; //指定尾字母
+		arg arg_r; //允许隐含环
+		char head; //开始字母
+		char tail; //结束字母
+
+		cout << endl;
+		cout << endl;
+		cout << endl;
+		cout << "----------开始读入参数！----------" << endl;
+		cout << "Waiting···" << endl;
+		for (int i = 0; i < argc; i++) {
+			cout << "第 " << i << " 个参数是 " << argv[i] << endl;
+		}
+		int valid = core->find_arg(argc, argv, arg_w, arg_c, arg_h, arg_t, arg_r, head, tail);
+		try {
+			if (valid == 1) {
+				throw 1;
+			}
+			else if (valid == 2) {
+				throw 2;
+			}
+			else if (valid == 3) {
+				throw 3;
+			}
+			else if (valid == 4) {
+				throw 4;
+			}
+		}
+		catch (int e) {
+			if (e == 1) {
+				cout << "Error : -w和-c同时存在" << endl;
+				exit(0);
+			}
+			else if (e == 2) {
+				cout << "Error : -h参数错误" << endl;
+				exit(0);
+			}
+			else if (e == 3) {
+				cout << "Error : -t参数错误" << endl;
+				exit(0);
+			}
+			else if (e == 4) {
+				cout << "Error : 没有-w或-c参数" << endl;
+				exit(0);
+			}
+		}
+		cout << "----------完成读入参数！----------" << endl;
+
+		cout << endl;
+		cout << endl;
+		cout << endl;
+		cout << "----------开始读取单词列表！----------" << endl;
+		cout << "Waiting···" << endl;
+		core->fin.open(argv[argc - 1], ios::in);
+		core->check_file();
+		core->fout.open("./solution.txt", ios::out);
+		core->fin.unsetf(ios::skipws);								//取消忽略空白符
+		vector<string> str_wordlist = core->read_words(words);
+		cout << "列表中共有 " << str_wordlist.size() << " 个单词" << endl;
+		cout << "----------完成读取单词列表！----------" << endl;
+
+		cout << endl;
+		cout << endl;
+		cout << endl;
+		cout << "----------开始查找最长链！----------" << endl;
+		cout << "Waiting···" << endl;
+		if (arg_w.exist) {
+			cout << "最长单词链" << endl;
+			int length = gen_chain_word(words, int(str_wordlist.size()), result, head, tail, arg_r.exist);
+			cout << "最长单词链单词个数为 " << length << endl;
+		}
+		if (arg_c.exist) {
+			cout << "最长字母链" << endl;
+			int length = gen_chain_char(words, int(str_wordlist.size()), result, head, tail, arg_r.exist);
+			cout << "最长字母链字母个数为 " << length << endl;
+		}
+		cout << "----------完成查找最长链！----------" << endl;
+
+		cout << endl;
+		cout << endl;
+		cout << endl;
+		cout << "----------开始打印结果！----------" << endl;
+		cout << "Waiting···" << endl;
+		for (int i = 0; strcmp(result[i], "16061182") != 0; i++) {
+			cout << result[i] << " -> " << endl;
+			core->fout << result[i] << endl;
+		}
+		cout << "----------完成打印结果！----------" << endl;
+
+		core->fin.close();
+		core->fout.close();
+	}
+	else if (method == 1) {
+		Core *core = new Core();
+		/*vector<string> str_wordlist = { "END", "OF", "THE", "WORLD", "TT", "ANT" };
+		char *input[10];
+		char *output[10];
+		for (int i = 0; i < int(str_wordlist.size()); i++) {
+			input[i] = (char *)malloc(sizeof(char) * 50);
+			strcpy_s(input[i], 50, str_wordlist[i].c_str());
+		}*/
+
+		char *input[11] = { (char *)"Algebra",(char *)"Apple",(char *)"Zoo",(char *)"Elephant" ,
+		(char *)"Under" ,(char *)"Fox" ,(char *)"Dog" ,(char *)"Moon" ,
+			(char *)"Leaf",(char *)"Trick",(char *)"Pm"
+		};
+		char *output[11];
+
+		int length = gen_chain_word(input, 11, output, 'a', 'n', false);
+		cout << "----------开始打印结果！----------" << endl;
+		for (int i = 0; strcmp(output[i], "16061182") != 0; i++) {
+			cout << output[i] << " -> " << endl;
+		}
+		cout << "长度为 " << length << endl;
+		cout << "----------完成打印结果！----------" << endl;
+	}
+
+	return 0;
 }
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单

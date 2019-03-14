@@ -5,7 +5,6 @@
 #include <string>
 #include <time.h>
 using namespace std;
-void getTime();
 
 /*------------------------------------------------结构定义------------------------------------------------*/
 typedef struct {
@@ -23,36 +22,70 @@ typedef struct {
 	int index;
 }arg;
 typedef struct {
-	vector<string> word_chain;	//单词链
+	vector<int> word_chain;	//单词链
 	int len;					//单词链的长度
 }chain;
 /*------------------------------------------------结构定义------------------------------------------------*/
 
 
 /*------------------------------------------------全局变量------------------------------------------------*/
-ifstream fin;
-ofstream fout;
+
 /*------------------------------------------------全局变量------------------------------------------------*/
 
 
 /*------------------------------------------------类定义------------------------------------------------*/
 class Core {
 private:
-	vector<string> temp_list;	//dfs_loop时的缓存链
-	int temp_list_length;		//缓存链的长度
-	vector<chain> chain_list;
-	vector<string> optimal_list;
+	vector<int> temp_list;		//dfs_loop时的缓存链
+	int temp_list_length;			//缓存链的长度
+	vector<chain> chain_list;		//爆搜链的表格
+
+	int core_visited[10005] = { 0 };								//单词访问记录表
+	int core_distance[10005] = { 0 };							//距离开始位置的距离表
+	int core_preword[10005] = { 0 };									//最长路径前一单词
+	int core_order[10005] = { 0 };									//记录单词在链上的位置
+
+	int temp_visited[10005] = { 0 };
+	vector<int> dfs_list;
+	int dfs_list_length;
 public:
+	ifstream fin;
+	ofstream fout;
+	vector<vertex> core_beginchar[26];								//以a-z开头的单词(和endchar一同保存图)
+	vector<vertex> core_endchar[26];								//以a-z结尾的单词
+	vector<vertex> core_beginword;									//开始集
+	vector<vertex> core_endword;									//结束集
+	char core_head;
+	char core_tail;
+	int optimal_length;				//最优链的长度
+	vector<string> optimal_list;	//最优链
+	vector<string> core_words;
+
 	Core();
 	void print_wordlist(vector<vertex> beginword, vector<vertex> endword);
-	void dfs_both(vertex p, int *distance, int *visited, int *preword, int *order, vector<vertex> *beginchar, bool enable_loop);
-	void dfs_both_loop_freeend(vertex p, int *visited, vector<vertex> *beginchar, vector<string> dfs_list, int dfs_list_length, bool enable_loop);
-	void dfs_both_loop_limitedend(vertex p, int *visited, vector<vertex> *beginchar, vector<string> dfs_list, int dfs_list_length, char tail, bool enable_loop);
-	void generate(char *words[], int len, int searchmethod, char head, char tail, vector<vertex> *beginchar, vector<vertex> *endchar, vector<vertex> &beginword, bool enable_loop, int *distance, int *visited, int *preword, int *order, bool ischar);
-	int gen_chain_word(char* words[], int len, char* result[], char head, char tail, bool enable_loop);
-	int gen_chain_char(char* words[], int len, char* result[], char head, char tail, bool enable_loop);
-	void get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool ischar);
+	void dfs_both(vertex p);
+	void dfs_both_loop_freeend(vertex p);
+	void dfs_both_loop_limitedend(vertex p);
+	void generate(int len, bool enable_loop, bool ischar);
+	void get_loop_list(int len, vector<vertex> &loop_list, bool ischar);
 	void print(char *result[], bool enable_loop);
+	void to_low(int i);
+	void getTime();
+	int read_word(char *word);
+	vector<string> read_words(char *words[]);
+	int find_arg(int argc, char *argv[], arg &w, arg &c, arg &h, arg &t, arg &r, char &head, char &tail);
+	vector<string> read_words_str(string wordstring, char *words[]);
+	int read_word_str(char *word, int &loc, string wordstring);
+
+	void check_h_and_t(char head, char tail, bool have_head, bool have_tail);
+	void check_file();
+	void check_loop(bool enable_loop, int size);
+	void check_null(char *word);
+	void check_char(int i);
+	void check_void(int len);		//输入的单词集合的单词个数是否小于2
+	void check_2();					//单词链中单词个数是否小于2
+	void check_same();
+
 };
 
 Core::Core() {};
@@ -60,333 +93,247 @@ Core::Core() {};
 void Core::print_wordlist(vector<vertex> beginword, vector<vertex> endword) {
 	vector<vertex>::iterator i;
 	cout << "Begin Nodes : " << beginword.size() << " words" << endl;
-	/*for (i = beginword.begin(); i != beginword.end(); i++) {
-		vertex n = *i;
-		cout << n.word << " 下标：" << n.index << " 长度：" << n.length << " 结束词：" << n.is_end << endl;
-	}*/
 	cout << "End Nodes : " << endword.size() << " words" << endl;
-	/*for (i = endword.begin(); i != endword.end(); i++) {
-		vertex n = *i;
-		cout << n.word << " 下标：" << n.index << " 长度：" << n.length << " 结束词：" << n.is_end << endl;
-	}*/
 	return;
 }
 
-void Core::dfs_both(vertex p, int *distance, int *visited, int *preword, int *order, vector<vertex> *beginchar, bool enable_loop) {
-	/*if (p.is_end) {												//是结尾词
-		return;
-	}*/
-	visited[p.index] += 1;
+void Core::dfs_both(vertex p) {
+	core_visited[p.index] += 1;
 	int end = p.word.at(p.word.length() - 1) - 'a';
-	if (beginchar[end].size() != 0) {
+	if (core_beginchar[end].size() != 0) {
 		vector<vertex>::iterator item;
-		for (item = beginchar[end].begin(); item != beginchar[end].end(); item++) {
+		for (item = core_beginchar[end].begin(); item != core_beginchar[end].end(); item++) {
 			vertex n = *item;
-			if (!visited[n.index]) {
-				//cout << p.word << " " << n.word << " " << distance[p.index] << " " << n.length  << " " << distance[n.index] << endl;
-				if (distance[p.index] + n.length > distance[n.index]) {
-					distance[n.index] = distance[p.index] + n.length;
-					order[n.index] = order[p.index] + 1;
-					preword[n.index] = p.index;
-					dfs_both(n, distance, visited, preword, order, beginchar, enable_loop);
+			if (!core_visited[n.index]) {
+				if (core_distance[p.index] + n.length > core_distance[n.index]) {
+					core_distance[n.index] = core_distance[p.index] + n.length;
+					core_order[n.index] = core_order[p.index] + 1;
+					core_preword[n.index] = p.index;
+					dfs_both(n);
 				}
 			}
 		}//end for
 	}
-	visited[p.index] -= 1;
+	core_visited[p.index] -= 1;
 	return;
 }
 
-void Core::dfs_both_loop_freeend(vertex p, int *visited, vector<vertex> *beginchar, vector<string> dfs_list, int dfs_list_length, bool enable_loop) { //loop_free
-	/*if (p.is_end) {												//是结尾词
-		return;
-	}*/
-	visited[p.index] += 1;
-	dfs_list.push_back(p.word);
+void Core::dfs_both_loop_freeend(vertex p) { //loop_free
+	temp_visited[p.index] += 1;
+	dfs_list.push_back(p.index);
 	dfs_list_length += p.length;
 	int end = p.word.at(p.word.length() - 1) - 'a';
 	bool have_next = false;
-	if (beginchar[end].size() != 0) {
+	if (core_beginchar[end].size() != 0) {
 		vector<vertex>::iterator item;
-		for (item = beginchar[end].begin(); item != beginchar[end].end(); item++) {
+		for (item = core_beginchar[end].begin(); item != core_beginchar[end].end(); item++) {
 			vertex n = *item;
-			if (!visited[n.index]) {
+			if (!temp_visited[n.index]) {
 				have_next = true;
-				dfs_both_loop_freeend(n, visited, beginchar, dfs_list, dfs_list_length, enable_loop);			
+				dfs_both_loop_freeend(n);
 			}
 		}//end for
 	}
-	if(!have_next) {				//到达查找的终点
+	if (!have_next) {				//到达查找的终点
 		if (dfs_list_length > temp_list_length) {
 			temp_list = dfs_list;
 			temp_list_length = dfs_list_length;
 		}
 	}
-	visited[p.index] -= 1;
-	/*vector<string>::iterator item = dfs_list.end() - 1;			//最后一个元素，即p
-	dfs_list.erase(item);
-	dfs_list_length -= p.length;*/
+	temp_visited[p.index] -= 1;
+	dfs_list.pop_back();
+	dfs_list_length -= p.length;
+
 	return;
 }
 
-void Core::dfs_both_loop_limitedend(vertex p, int *visited, vector<vertex> *beginchar, vector<string> dfs_list, int dfs_list_length, char tail, bool enable_loop) { //loop_limited
-	/*if (p.is_end) {												//是结尾词
-		return;
-	}*/
-	visited[p.index] += 1;
-	dfs_list.push_back(p.word);
+void Core::dfs_both_loop_limitedend(vertex p) { //loop_limited
+	temp_visited[p.index] += 1;
+	dfs_list.push_back(p.index);
 	dfs_list_length += p.length;
-	if (p.word.at(p.word.length() - 1) == tail) {
+	if (p.word.at(p.word.length() - 1) == core_tail) {
 		if (dfs_list_length > temp_list_length) {
 			temp_list = dfs_list;
 			temp_list_length = dfs_list_length;
 		}
 	}
 	int end = p.word.at(p.word.length() - 1) - 'a';
-	if (beginchar[end].size() != 0) {
+	if (core_beginchar[end].size() != 0) {
 		vector<vertex>::iterator item;
-		for (item = beginchar[end].begin(); item != beginchar[end].end(); item++) {
+		for (item = core_beginchar[end].begin(); item != core_beginchar[end].end(); item++) {
 			vertex n = *item;
-			if (!visited[n.index]) {
-				dfs_both_loop_limitedend(n, visited, beginchar, dfs_list, dfs_list_length, tail, enable_loop);
+			if (!temp_visited[n.index]) {
+				dfs_both_loop_limitedend(n);
 			}
 		}//end for
 	}
-	visited[p.index] -= 1;
-	/*vector<string>::iterator item = dfs_list.end() - 1;			//最后一个元素，即p
-	dfs_list.erase(item);
-	dfs_list_length -= p.length;*/
+	temp_visited[p.index] -= 1;
+	dfs_list.pop_back();
+	dfs_list_length -= p.length;
+
 	return;
 }
 
-/*void Core::dfs_both_loop(vertex p, int *distance, int *visited, int *preword, int *order, vector<vertex> *beginchar, bool enable_loop) {
-	if (p.is_end) {												//是结尾词
-		return;
-	}
-	visited[p.index] += 1;
-	int end = p.word.at(p.word.length() - 1) - 'a';
-	if (beginchar[end].size() != 0) {
-		vector<vertex>::iterator item;
-		for (item = beginchar[end].begin(); item != beginchar[end].end(); item++) {
-			vertex n = *item;
-			if (!visited[n.index]) {
-				//cout << p.word << " " << n.word << " " << distance[p.index] << " " << n.length  << " " << distance[n.index] << endl;
-				if (distance[p.index] + n.length > distance[n.index]) {
-					distance[n.index] = distance[p.index] + n.length;
-					order[n.index] = order[p.index] + 1;
-					preword[n.index] = p.index;
-					dfs_both_loop(n, distance, visited, preword, order, beginchar, enable_loop);
-				}
-			}
-		}//end for
-	}
-	visited[p.index] -= 1;
-	return;
-}*/
-
-void Core::generate(char *words[], int len, int searchmethod, char head, char tail, vector<vertex> *beginchar, vector<vertex> *endchar, vector<vertex> &beginword, bool enable_loop, int *distance, int *visited, int *preword, int *order, bool ischar) {
+void Core::generate(int len, bool enable_loop, bool ischar) {
 	vector<vertex>::iterator item;
 	vector<vertex>::iterator temp;
 	vector<vertex>::iterator ans;
 	vector<vertex> loop_list;								//环路点集
-	if (enable_loop) {										//生成环路点集
-		cout << "开始生成环路点集" << endl;
-		get_loop_list(words, len, loop_list, ischar);
-		cout << "完成生成环路点集" << endl;
-	}
-	if (head == '0' && tail == '0') {
+	int searchmethod = 0;
+	//生成环路点集
+	cout << "开始生成环路点集" << endl;
+	get_loop_list(len, loop_list, ischar);
+	cout << "完成生成环路点集" << endl;
+	check_loop(enable_loop, int(loop_list.size()));
+
+	if (int(core_head) == 0 && int(core_tail) == 0) {
 		searchmethod = 0;
 		for (int i = 0; i < 26; i++) {
 			vector<vertex>::iterator item;
-			if (endchar[i].size() == 0 && beginchar[i].size() != 0) {			//没有以其为结尾的单词，但有以其为开头的单词
-				item = beginchar[i].begin();			//把所有以其为开始的单词加入开始集
-				while (item != beginchar[i].end()) {
+			if (core_endchar[i].size() == 0 && core_beginchar[i].size() != 0) {			//没有以其为结尾的单词，但有以其为开头的单词
+				item = core_beginchar[i].begin();			//把所有以其为开始的单词加入开始集
+				while (item != core_beginchar[i].end()) {
 					vertex n = *item;
-					beginword.push_back(n);
+					if (n.word.at(0) != n.word.at(n.word.length() - 1)) {
+						core_beginword.push_back(n);
+					}
 					item++;
 				}
 			}
-			/*else if (beginchar[i].size() == 0 && endchar[i].size() != 0) {		//没有以其为开头的单词，但有以其为结尾的单词
-				item = endchar[i].begin();				//把所有以其为结束的单词加入结束集
-				while (item != endchar[i].end()) {
-					vertex n = *item;
-					//n.is_end = true;
-					endword.push_back(n);
-					item++;
-				}
-			}*/
 		}//end for
 		if (enable_loop) {							//环路点集加入开始集
 			for (ans = loop_list.begin(); ans != loop_list.end(); ans++) {
-				beginword.push_back(*ans);
-				//endword.push_back(*ans);
+				core_beginword.push_back(*ans);
 			}
 		}
 	}
-	else if (head >= 'a' && head <= 'z' && tail == '0') {
+	else if (core_head >= 'a' && core_head <= 'z' && int(core_tail) == 0) {
 		searchmethod = 1;
-		int loc = head - 'a';
+		int loc = core_head - 'a';
 		vector<vertex>::iterator item;
-		item = beginchar[loc].begin();								//创建开始集
-		while (item != beginchar[loc].end()) {
+		item = core_beginchar[loc].begin();								//创建开始集
+		while (item != core_beginchar[loc].end()) {
 			vertex n = *item;
-			beginword.push_back(n);
+			if (n.word.at(0) != n.word.at(n.word.length() - 1)) {
+				core_beginword.push_back(n);
+			}
 			item++;
 		}
-		/*for (int i = 0; i < 26; i++) {								//创建结束集
-			if (beginchar[i].size() == 0 && endchar[i].size() != 0) {
-				item = endchar[i].begin();
-				while (item != endchar[i].end()) {
-					vertex n = *item;
-					//n.is_end = true;
-					endword.push_back(n);
-					item++;
-				}
-			}
-		}//end for*/
-		/*if (enable_loop) {							//环路点集加入结束集
-			for (ans = loop_list.begin(); ans != loop_list.end(); ans++) {
-				endword.push_back(*ans);
-			}
-		}*/
 	}
-	else if (head == '0' && tail >= 'a' && tail <= 'z') {
+	else if (int(core_head) == 0 && core_tail >= 'a' && core_tail <= 'z') {
 		searchmethod = 2;
-		int loc = tail - 'a';
-		vector<vertex>::iterator item;								//创建结束集
-		/*item = endchar[loc].begin();
-		while (item != endchar[loc].end()) {
-			vertex n = *item;
-			//n.is_end = true;
-			endword.push_back(n);
-			item++;
-		}*/
+		int loc = core_tail - 'a';
+		vector<vertex>::iterator item;
 		for (int i = 0; i < 26; i++) {								//创建开始集
-			if (endchar[i].size() == 0 && beginchar[i].size() != 0) {
-				item = beginchar[i].begin();
-				while (item != beginchar[i].end()) {
+			if (core_endchar[i].size() == 0 && core_beginchar[i].size() != 0) {
+				item = core_beginchar[i].begin();
+				while (item != core_beginchar[i].end()) {
 					vertex n = *item;
-					beginword.push_back(n);
+					if (n.word.at(0) != n.word.at(n.word.length() - 1)) {
+						core_beginword.push_back(n);
+					}
 					item++;
 				}
 			}
 		}//end for
 		if (enable_loop) {							//环路点集加入开始集
 			for (ans = loop_list.begin(); ans != loop_list.end(); ans++) {
-				beginword.push_back(*ans);
+				core_beginword.push_back(*ans);
 			}
 		}
 	}
-	else if (head >= 'a' && head <= 'z' && tail >= 'a' && tail <= 'z') {
+	else if (core_head >= 'a' && core_head <= 'z' && core_tail >= 'a' && core_tail <= 'z') {
 		searchmethod = 3;
-		int loc_begin = head - 'a';
-		int loc_end = tail - 'a';
+		int loc_begin = core_head - 'a';
+		int loc_end = core_tail - 'a';
 		vector<vertex>::iterator item;
-		item = beginchar[loc_begin].begin();						//创建开始集
-		while (item != beginchar[loc_begin].end()) {
+		item = core_beginchar[loc_begin].begin();						//创建开始集
+		while (item != core_beginchar[loc_begin].end()) {
 			vertex n = *item;
-			beginword.push_back(n);
+			if (n.word.at(0) != n.word.at(n.word.length() - 1)) {
+				core_beginword.push_back(n);
+			}
 			item++;
 		}
-		/*item = endchar[loc_end].begin();							//创建结束集
-		while (item != endchar[loc_end].end()) {
-			vertex n = *item;
-			//n.is_end = true;
-			endword.push_back(n);
-			item++;
-		}*/
 	}
-	/*for (item = endword.begin(); item != endword.end(); item++) {
-		for (temp = beginword.begin(); temp != beginword.end(); temp++) {			//设置开始集的结束标志位
-			if ((*temp).index == (*item).index) {
-				(*temp).is_end = true;
-				break;
-			}
-		}
-		int i = (*item).word.at(0) - 'a';	//第一个字母
-		for (temp = beginchar[i].begin(); temp != beginchar[i].end(); temp++) {		//设置beginchar集的结束标志位
-			if ((*temp).index == (*item).index) {
-				(*temp).is_end = true;
-				break;
-			}
-		}
-	}*/
-	for (item = beginword.begin(); item != beginword.end(); item++) {		//初始化开始集的距离
+	for (item = core_beginword.begin(); item != core_beginword.end(); item++) {		//初始化开始集的距离
 		vertex p = *item;
-		distance[p.index] += p.length;
-		order[p.index] += 1;
+		core_distance[p.index] += p.length;
+		core_order[p.index] += 1;
 	}
-	//print_wordlist(beginword, endword);
-	cout << "共有 " << beginword.size() << " 个开始点" << endl;
+	cout << "共有 " << core_beginword.size() << " 个开始点" << endl;
 	getTime();
 	int i = 1;
 	if (!enable_loop) {
-		for (item = beginword.begin(); item != beginword.end(); item++) {
+		for (item = core_beginword.begin(); item != core_beginword.end(); item++) {
 			vertex p = *item;
 			cout << "开始执行第" << i++ << " 个开始点 " << p.word << endl;
 			getTime();
-			dfs_both(p, distance, visited, preword, order, beginchar, enable_loop);
+			dfs_both(p);
 		}
 		int max = 0;
 		int record = 0;
-		if (searchmethod == 0 || searchmethod == 1) {	
+		if (searchmethod == 0 || searchmethod == 1) {
 			for (int i = 0; i < len; i++) {
-				if (distance[i] > max) {
-					max = distance[i];
+				if (core_distance[i] > max) {
+					max = core_distance[i];
 					record = i;
 				}
 			}
 		}
 		else if (searchmethod == 2 || searchmethod == 3) {
 			for (int i = 0; i < len; i++) {
-				string word = words[i];
-				if (distance[i] > max && word.at(word.length() - 1) == tail) {
-					max = distance[i];
+				string word = core_words[i];
+				if (core_distance[i] > max && word.at(word.length() - 1) == core_tail) {
+					max = core_distance[i];
 					record = i;
 				}
 			}
 		}
-		int length = order[record];
+		optimal_length = max;
+		int length = core_order[record];
 		for (int i = 0; i < length; i++) {
-			optimal_list.push_back(string(words[record]));
-			record = preword[record];
+			optimal_list.push_back(string(core_words[record]));
+			record = core_preword[record];
 		}
 	}
 	else {
-		for (item = beginword.begin(); item != beginword.end(); item++) {
+		for (item = core_beginword.begin(); item != core_beginword.end(); item++) {
 			vertex p = *item;
 			cout << "开始执行第" << i++ << " 个开始点 " << p.word << endl;
 			getTime();
-			int temp_visited[10005] = { 0 };								//单词访问记录表
-			vector<string> dfs_list;
 			if (searchmethod == 0 || searchmethod == 1) {
-				dfs_both_loop_freeend(p, temp_visited, beginchar, dfs_list, 0, enable_loop);
+				dfs_both_loop_freeend(p);
 			}
 			else if (searchmethod == 2 || searchmethod == 3) {
-				dfs_both_loop_limitedend(p, temp_visited, beginchar, dfs_list, 0, tail, enable_loop);
+				dfs_both_loop_limitedend(p);
 			}
-			chain_list.push_back({ temp_list,int(temp_list.size()) });		//本次单词链加入单词链表
+			chain_list.push_back({ temp_list, temp_list_length });		//本次单词链加入单词链表
 		}
-		
+
 		//从单词链表中寻找最长单词链作为结果
 		int max_length = 0;
 		int max_index = 0;
-		for (unsigned int i = 0 ; i < chain_list.size() ; i++) {
+		for (unsigned int i = 0; i < chain_list.size(); i++) {
 			if (chain_list[i].len > max_length) {
 				max_length = chain_list[i].len;
 				max_index = i;
 			}
 		}
-		optimal_list = chain_list[max_index].word_chain;
+		optimal_length = max_length;
+		//optimal_list = chain_list[max_index].word_chain;
+		vector<string> perhona;
+		for (int i = 0; i < chain_list[max_index].word_chain.size(); i++) {
+			perhona.push_back(string(core_words[chain_list[max_index].word_chain[i]]));
+		}
+		optimal_list = perhona;										//拷贝最优单词链
 	}
-	/*for (int i = 0; i < optimal_list.size(); i++) {
-		cout << "yes" << optimal_list[i] << endl;
-	}*/
 	getTime();
+	return;
 }
 
 void Core::print(char *result[], bool enable_loop) {
-	int max = optimal_list.size();
+	int max = int(optimal_list.size());
 	cout << "最长链单词数为" << max << endl;
 	result[max] = (char *)malloc(sizeof(char) * 50);
 	strcpy_s(result[max], 50, "16061182");
@@ -401,74 +348,13 @@ void Core::print(char *result[], bool enable_loop) {
 	}
 }
 
-int Core::gen_chain_word(char* words[], int len, char* result[], char head, char tail, bool enable_loop) {	//这里默认words没有重复
-	int visited[10005] = { 0 };								//单词访问记录表
-	int distance[10005] = { 0 };							//距离开始位置的距离表
-	int preword[10005] = { 0 };									//最长路径前一单词
-	int order[10005] = { 0 };									//记录单词在链上的位置
-	vector<vertex> beginchar[26];								//以a-z开头的单词(和endchar一同保存图)
-	vector<vertex> endchar[26];								//以a-z结尾的单词
-	vector<vertex> beginword;									//开始集
-	vector<vertex> endword;									//结束集
-	int searchmethod = 0;
-	for (int i = 0; i < len; i++) {
-		string word = words[i];
-		beginchar[word.at(0) - 'a'].push_back({ word,i,1,false });					//单词长度视为1
-		endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,1,false });
-		if (word.at(0) == word.at(word.length() - 1)) {								//自环单词直接加入开始集
-			beginword.push_back({ word,i,1,false });
-		}
+void Core::to_low(int i) {
+	for (int ans = 0; ans < core_words[i].length(); ans++) {
+		core_words[i][ans] = tolower(core_words[i][ans]);
 	}
-
-	generate(words, len, searchmethod, head, tail, beginchar, endchar, beginword, enable_loop, distance, visited, preword, order, false);
-	print(result, enable_loop);
-
-	/*int max = optimal_list.size();
-	cout << "最长链单词数为" << max << endl;
-	result[max] = (char *)malloc(sizeof(char) * 50);
-	strcpy_s(result[max], 50, "16061182");
-	for (int i = max - 1; i >= 0; i--) {
-		result[i] = (char *)malloc(sizeof(char) * 50);
-		strcpy_s(result[i], 50, optimal_list[max-1-i].c_str());
-	}*/
-	
-	return 1;
 }
 
-int Core::gen_chain_char(char* words[], int len, char* result[], char head, char tail, bool enable_loop) {			//默认words没有重复
-	int visited[10005] = { 0 };								//单词访问记录表
-	int distance[10005] = { 0 };							//距离开始位置的距离表
-	int preword[10005] = { 0 };									//最长路径前一单词
-	int order[10005] = { 0 };							//记录单词是最长链上的第几个单词
-	vector<vertex> beginchar[26];								//以a-z开头的单词(和endchar一同保存图)
-	vector<vertex> endchar[26];								//以a-z结尾的单词
-	vector<vertex> beginword;									//开始集
-	vector<vertex> endword;									//结束集
-	int searchmethod = 0;
-	for (int i = 0; i < len; i++) {
-		string word = words[i];
-		beginchar[word.at(0) - 'a'].push_back({ word,i,int(word.length()),false });
-		endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,int(word.length()),false });
-		if (word.at(0) == word.at(word.length() - 1)) {								//自环单词直接加入开始集
-			beginword.push_back({ word,i,int(word.length()),false });
-		}
-	}
-
-	generate(words, len, searchmethod, head, tail, beginchar, endchar, beginword, enable_loop, distance, visited, preword, order, true);
-	print(result, enable_loop);
-
-	/*int max = optimal_list.size();
-	cout << "最长链单词数为" << max << endl;
-	result[max] = (char *)malloc(sizeof(char) * 50);
-	strcpy_s(result[max], 50, "16061182");
-	for (int i = max - 1; i >= 0; i--) {
-		result[i] = (char *)malloc(sizeof(char) * 50);
-		strcpy_s(result[i], 50, optimal_list[max-1-i].c_str());
-	}*/
-	return 1;
-}
-
-void Core::get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool ischar) {									//用来获取环中的单词
+void Core::get_loop_list(int len, vector<vertex> &loop_list, bool ischar) {									//用来获取环中的单词
 	vector<vertex> beginchar[26];
 	vector<vertex> endchar[26];
 	vector<vertex>::iterator item;
@@ -476,16 +362,17 @@ void Core::get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool
 	vector<node>::iterator ans;
 	vector<node> queue;
 	for (int i = 0; i < len; i++) {
-		string word = words[i];
-		if (ischar == true) {
-			beginchar[word.at(0) - 'a'].push_back({ word,i,int(word.length()),false });
-			endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,int(word.length()),false });
+		string word = core_words[i];
+		if (word.at(0) != word.at(word.length() - 1)) {
+			if (ischar == true) {
+				beginchar[word.at(0) - 'a'].push_back({ word,i,int(word.length()),false });
+				endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,int(word.length()),false });
+			}
+			else {
+				beginchar[word.at(0) - 'a'].push_back({ word,i,1,false });					//单词长度视为1
+				endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,1,false });
+			}
 		}
-		else {
-			beginchar[word.at(0) - 'a'].push_back({ word,i,1,false });					//单词长度视为1
-			endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,1,false });
-		}
-
 	}
 	for (int i = 0; i < 26; i++) {
 		if (beginchar[i].size() != 0 && endchar[i].size() == 0) {						//入度为0的点（开始）
@@ -503,12 +390,6 @@ void Core::get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool
 		ans = queue.end() - 1;								//最后一个单词
 		int begin_loc = (*ans).word.at(0) - 'a';
 		int end_loc = (*ans).word.at((*ans).word.length() - 1) - 'a';
-		/*for (temp = beginchar[begin_loc].begin(); temp != beginchar[begin_loc].end(); temp++) {
-			if ((*temp) == (*item)) {						//开始集找到，删除该单词
-				beginchar[begin_loc].erase(temp);
-				break;
-			}
-		}*/
 		if ((*ans).is_head == true) {									//是开头节点
 			while (beginchar[begin_loc].size() != 0) {					//删除以该字母开头的所有点
 				temp = beginchar[begin_loc].end() - 1;
@@ -534,7 +415,6 @@ void Core::get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool
 			}
 		}
 
-		//cout << "删除了" << (*ans).word << endl;
 		queue.erase(ans);									//从队列中删除
 
 		for (int i = 0; i < 26; i++) {						//继续遍历，往队列里添加，直到所有点全部添加
@@ -561,11 +441,8 @@ void Core::get_loop_list(char* words[], int len, vector<vertex> &loop_list, bool
 	}
 	return;
 }
-/*------------------------------------------------类定义------------------------------------------------*/
 
-
-/*------------------------------------------------全局函数定义------------------------------------------------*/
-void getTime() {
+void Core::getTime() {
 	time_t time_seconds = time(0);
 	struct tm now_time;
 	localtime_s(&now_time, &time_seconds);
@@ -573,241 +450,209 @@ void getTime() {
 		now_time.tm_mday, now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
 }
 
-int read_word(char *word) {
-	char c;
-	if (fin.eof()) {
-		return EOF;
+
+void Core::check_h_and_t(char head, char tail, bool have_head, bool have_tail) {
+	try {
+		if (int(head) != 0 && !have_head) {
+			throw 0;
+		}
+		if (int(tail) != 0 && !have_tail) {
+			throw 1;
+		}
 	}
-	do {
-		fin >> c;
-		if (fin.eof()) {
-			return EOF;
+	catch (int e) {
+		if (e == 0) {
+			cout << "Error : 没有以参数'head'开头的单词" << endl;
+			exit(0);
 		}
-	} while (!isalpha(c));
-	do {
-		*word++ = c;
-		fin >> c;
-		c = tolower(c);
-		if (fin.eof()) {
-			return EOF;
+		else if (e == 1) {
+			cout << "Error : 没有以参数'tail'结尾的单词" << endl;
+			exit(0);
 		}
-	} while (isalpha(c));
-	*word = '\0';
-	return 1;
+	}
 }
 
-vector<string> read_words() {
-	char word[50];
-	vector<string> str_wordlist;
-	vector<string>::iterator str_loc;
-	while (read_word(word) != EOF) {
-		string str_word = word;
-		//cout << str_word << endl;
-		str_wordlist.push_back(str_word);
+void Core::check_file() {
+	try {
+		if (!fin) {
+			throw 0;
+		}
 	}
-	/*for (unsigned int i = 0; i < str_wordlist.size(); i++) {
-		cout << str_wordlist[i] << ":" << i << endl;
-	}*/
-	cout << endl;
-	return str_wordlist;
+	catch (...) {
+		cout << "Error : 打开单词文件失败" << endl;
+		exit(0);
+	}
 }
 
-/*
-enable_loop == false && 有环 -> return false
-enable_loop == true && 无环 -> return false
-*/
-
-bool check_loop(vector<string> str_wordlist, bool enable_loop) {						//此时已经经过重复性检查
-	vector<string> beginchar[26];
-	vector<string> endchar[26];
-	vector<string>::iterator item;
-	vector<string>::iterator temp;
-	vector<node>::iterator ans;
-	vector<node> queue;
-	for (item = str_wordlist.begin(); item != str_wordlist.end(); item++) {
-		string word = *item;
-		if (word.at(0) != word.at(word.length() - 1)) {									//自环点不算在内，检查时应该忽略
-			beginchar[word.at(0) - 'a'].push_back(word);
-			endchar[word.at(word.length() - 1) - 'a'].push_back(word);
+void Core::check_loop(bool enable_loop, int size) {
+	try {
+		if (!enable_loop && size != 0) {
+			throw 0;
+		}
+		if (enable_loop && size == 0) {
+			throw 1;
 		}
 	}
-	/*for (int i = 0; i < 26; i++) {		//自环点不算在内
-		if (beginchar[i].size() != 0) {
-			for (item = beginchar[i].begin(); item != beginchar[i].end(); ) {
-				string str = *item;
-				if (str.at(0) == str.at(str.length() - 1)) {
-					temp = item;
-					cout << 2333 << endl;
-					item++;
-					beginchar[i].erase(temp);
-				}
-			}
+	catch (int e) {
+		if (e == 0) {
+			cout << "Error : 没有-r参数，但是单词集中有环" << endl;
+			exit(0);
 		}
-		if (endchar[i].size() != 0) {
-			for (item = endchar[i].begin(); item != endchar[i].end(); ) {
-				string str = *item;
-				if (str.at(0) == str.at(str.length() - 1)) {
-					temp = item;
-					cout << 4666 << endl;
-					item++;
-					endchar[i].erase(temp);
-				}
-			}
+		else if (e == 1) {
+			cout << "Error : 有-r参数，但是单词集中没有环" << endl;
+			exit(0);
 		}
-		
-	}*/
-	for (int i = 0; i < 26; i++) {
-		if (beginchar[i].size() != 0 && endchar[i].size() == 0) {						//入度为0且出度不为0的点（开始）
-			for (item = beginchar[i].begin(); item != beginchar[i].end(); item++) {
-				queue.push_back({ *item, true });
-			}
-		}
-		/*if (beginchar[i].size() == 0 && endchar[i].size() != 0) {						//出度为0且入度不为0的点（结束）
-			for (item = endchar[i].begin(); item != endchar[i].end(); item++) {
-				queue.push_back({ *item, false });
-			}
-		}*/
 	}
-	while (queue.size() != 0) {
-		ans = queue.end() - 1;								//最后一个单词
-		int begin_loc = (*ans).word.at(0) - 'a';
-		int end_loc = (*ans).word.at((*ans).word.length() - 1) - 'a';
-		while (beginchar[begin_loc].size() != 0) {			//删除以该字母开头的所有点
-			temp = beginchar[begin_loc].end() - 1;
-			beginchar[begin_loc].erase(temp);
-		}
-		for (temp = endchar[end_loc].begin(); temp != endchar[end_loc].end(); temp++) {
-			if ((*temp) == (*ans).word) {						//结束集找到，删除该单词
-				endchar[end_loc].erase(temp);
-				break;
-			}
-		}
-		/*if ((*ans).is_head) {
-			while (beginchar[begin_loc].size() != 0) {			//删除以该字母开头的所有点
-				temp = beginchar[begin_loc].end() - 1;
-				beginchar[begin_loc].erase(temp);
-			}
-			for (temp = endchar[end_loc].begin(); temp != endchar[end_loc].end(); temp++) {
-				if ((*temp) == (*ans).word) {						//结束集找到，删除该单词
-					endchar[end_loc].erase(temp);
-					break;
-				}
-			}
-		}
-		else {
-			for (temp = beginchar[begin_loc].begin(); temp != beginchar[begin_loc].end(); temp++) {
-				if ((*temp) == (*ans).word) {
-					beginchar[begin_loc].erase(temp);
-					break;
-				}
-			}
-			while (endchar[end_loc].size() != 0) {
-				temp = endchar[end_loc].end() - 1;
-				endchar[end_loc].erase(temp);
-			}
-		}*/
-
-		//cout << "删除了" << (*ans).word << endl;
-		queue.erase(ans);									//从队列中删除
-
-		for (int i = 0; i < 26; i++) {						//继续遍历，往队列里添加，直到所有点全部添加
-			if (beginchar[i].size() != 0 && endchar[i].size() == 0) {						//入度为0且出度不为0的点（开始）
-				for (item = beginchar[i].begin(); item != beginchar[i].end(); item++) {
-					queue.push_back({ *item, true });
-				}
-			}
-			/*if (beginchar[i].size() == 0 && endchar[i].size() != 0) {						//出度为0且入度不为0的点（结束）
-				for (item = endchar[i].begin(); item != endchar[i].end(); item++) {
-					queue.push_back({ *item, false });
-				}
-			}*/
-		}
-	}//end while
-	bool last = false;
-	for (int i = 0; i < 26 && last == false; i++) {
-		if (beginchar[i].size() != 0) {
-			for (item = beginchar[i].begin(); item != beginchar[i].end(); item++) {
-				string str = *item;
-				if (!(str.at(0) == str.at(str.length() - 1))) {				//有除了自环之外的点
-					last = true;
-					cout << "图里有环" << endl;
-					break;
-				}
-			}
-		}
-		
-		/*if (beginchar[i].size() != 0) {						//有未删干净的点（未必所有未删除的点都在环中）
-			last = true;
-			cout << "图里有环" << endl;
-			break;
-		}*/
-	}
-	if ((enable_loop == false && last == true) || (enable_loop == true && last == false)) {
-		return false;
-	}
-	return true;
 }
 
-bool find_arg(int argc, char *argv[], arg &w, arg &c, arg &h, arg &t, arg &r, char &head, char &tail) {
-	for (int i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "-w") == 0) {
-			w.exist = true;
-			w.index = i;
+void Core::check_char(int i) {
+	int length = int(core_words[i].length());
+	for (int ans = 0; ans < length; ans++) {
+		char c = core_words[i][ans];
+		try {
+			if (!((c >= 'a'&&c <= 'z') || (c >= 'A'&&c <= 'Z'))) {
+				throw 0;
+			}
 		}
-		if (strcmp(argv[i], "-c") == 0) {
-			c.exist = true;
-			c.index = i;
-		}
-		if (strcmp(argv[i], "-h") == 0) {
-			h.exist = true;
-			h.index = i;
-		}
-		if (strcmp(argv[i], "-t") == 0) {
-			t.exist = true;
-			t.index = i;
-		}
-		if (strcmp(argv[i], "-r") == 0) {
-			r.exist = true;
-			r.index = i;
+		catch (...) {
+			cout << "Error : 单词中包含非法字符" << endl;
+			exit(0);
 		}
 	}
-	if (w.exist && c.exist) {
-		return false;
-	}
-	if (h.exist) {
-		if (h.index == argc - 1) {
-			return false;
-		}
-		string str_head = argv[h.index + 1];
-		char char_head = str_head.at(0);
-		if (str_head.length() != 1) {
-			return false;
-		}
-		if (!((char_head >= 'a' && char_head <= 'z') || (char_head >= 'A' && char_head <= 'Z'))) {
-			return false;
-		}
-		head = char_head;
-	}
-	else {
-		head = '0';
-	}
-	if (t.exist) {
-		if (t.index == argc - 1) {
-			return false;
-		}
-		string str_tail = argv[t.index + 1];
-		char char_tail = str_tail.at(0);
-		if (str_tail.length() != 1) {
-			return false;
-		}
-		if (!((char_tail >= 'a' && char_tail <= 'z') || (char_tail >= 'A' && char_tail <= 'Z'))) {
-			return false;
-		}
-		tail = char_tail;
-	}
-	else {
-		tail = '0';
-	}
-	return true;
 }
+
+void Core::check_null(char *word) {
+	try {
+		if (word == NULL) {
+			throw 0;
+		}
+	}
+	catch (...) {
+		cout << "Error : 单词列表中存在空的指针" << endl;
+		exit(0);
+	}
+}
+
+void Core::check_void(int len) {
+	try {
+		if (len < 2) {
+			throw 0;
+		}
+	}
+	catch (...) {
+		cout << "Error : 输入的单词数量小于2，将无法找出合法的单词链" << endl;
+		exit(0);
+	}
+}
+
+void Core::check_2() {
+	try {
+		if (optimal_list.size() < 2) {
+			throw 0;
+		}
+	}
+	catch (...) {
+		cout << "Error : 最长链的单词数小于2" << endl;
+		exit(0);
+	}
+}
+
+
+
 /*------------------------------------------------全局函数定义------------------------------------------------*/
+
+int gen_chain_word(char* words[], int len, char* result[], char head, char tail, bool enable_loop) {	//这里默认words没有重复
+	Core *core = new Core();
+	core->check_void(len);
+	for (int i = 0; i < len; i++) {
+		core->check_null(words[i]);
+		string word = words[i];
+		core->core_words.push_back(word);
+		core->to_low(i);
+		/*for (int k = 0; k < i; k++) {
+			if (core->core_words[i] == core->core_words[k]) {
+				cout << "Error : 输入的单词列表中有重复项" << endl;
+				cout << core->core_words[i] << " " << i << endl;
+				cout << core->core_words[k] << " " << k << endl;
+				exit(0);
+			}
+		}*/
+	}
+	core->core_head = head;
+	core->core_tail = tail;
+	int searchmethod = 0;
+	bool have_head = false;
+	bool have_tail = false;
+	for (int i = 0; i < len; i++) {
+		core->check_char(i);
+		//core->to_low(i);
+		string word = core->core_words[i];
+		if (word.at(0) == head) {
+			have_head = true;
+		}
+		if (word.at(word.length() - 1) == tail) {
+			have_tail = true;
+		}
+		core->core_beginchar[word.at(0) - 'a'].push_back({ word,i,1,false });					//单词长度视为1
+		core->core_endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,1,false });
+		if (word.at(0) == word.at(word.length() - 1)) {								//自环单词直接加入开始集
+			core->core_beginword.push_back({ word,i,1,false });
+		}
+	}
+
+	core->check_h_and_t(head, tail, have_head, have_tail);
+
+	core->generate(len, enable_loop, false);
+	core->check_2();
+	core->print(result, enable_loop);
+
+	return int(core->optimal_list.size());
+}
+
+int gen_chain_char(char* words[], int len, char* result[], char head, char tail, bool enable_loop) {			//默认words没有重复
+	Core *core = new Core();
+	core->check_void(len);
+	for (int i = 0; i < len; i++) {
+		core->check_null(words[i]);
+		string word = words[i];
+		core->core_words.push_back(word);
+		core->to_low(i);
+		/*for (int k = 0; k < i; k++) {
+			if (core->core_words[i] == core->core_words[k]) {
+				cout << "Error : 输入的单词列表中有重复项" << endl;
+				cout << core->core_words[i] << " " << i << endl;
+				cout << core->core_words[k] << " " << k << endl;
+				exit(0);
+			}
+		}*/
+	}
+	core->core_head = head;
+	core->core_tail = tail;
+	int searchmethod = 0;
+	bool have_head = false;
+	bool have_tail = false;
+	for (int i = 0; i < len; i++) {
+		core->check_char(i);
+		//core->to_low(i);
+		string word = core->core_words[i];
+		if (word.at(0) == head) {
+			have_head = true;
+		}
+		if (word.at(word.length() - 1) == tail) {
+			have_tail = true;
+		}
+		core->core_beginchar[word.at(0) - 'a'].push_back({ word,i,int(word.length()),false });
+		core->core_endchar[word.at(word.length() - 1) - 'a'].push_back({ word,i,int(word.length()),false });
+		if (word.at(0) == word.at(word.length() - 1)) {								//自环单词直接加入开始集
+			core->core_beginword.push_back({ word,i,int(word.length()),false });
+		}
+	}
+
+	core->check_h_and_t(head, tail, have_head, have_tail);
+
+	core->generate(len, enable_loop, true);
+	core->check_2();
+	core->print(result, enable_loop);
+
+	return int(core->optimal_list.size());
+}

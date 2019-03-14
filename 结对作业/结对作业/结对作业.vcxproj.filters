@@ -24,6 +24,9 @@
     <ClInclude Include="interface.h">
       <Filter>源文件</Filter>
     </ClInclude>
+    <ClInclude Include="ew.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

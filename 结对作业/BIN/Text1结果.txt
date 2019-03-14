@@ -1,0 +1,27 @@
+#-w
+
+l -> d
+d -> i
+i -> b
+b -> n
+n -> z
+z -> r
+r -> v
+v -> o
+o -> t
+t -> x
+x -> j
+j -> y
+y -> h
+h -> g
+g -> k
+k -> q
+q -> p
+p -> f
+f -> s
+s -> w
+w -> m
+m -> a
+a -> u
+u -> e
+e -> c
